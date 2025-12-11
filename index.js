@@ -126,22 +126,67 @@ app.get('/my-tasks/:email', async (req, res) => {
 });
 
 
+app.put('/tasks/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        const updatedTaskData = req.body;
+
+        
+        const query = { _id: new ObjectId(id) }; 
+        
+        
+        const updateDoc = {
+            $set: {
+                title: updatedTaskData.title,
+                description: updatedTaskData.description,
+                category: updatedTaskData.category,
+                price: updatedTaskData.price,
+                budget: updatedTaskData.budget,
+                deadline: updatedTaskData.deadline,
+                
+            },
+        };
+
+       
+        const result = await tasksCollection.updateOne(query, updateDoc); 
+
+        if (result.matchedCount === 0) {
+            return res.status(404).send({ message: "Task not found" });
+        }
+
+        if (result.modifiedCount === 1) {
+             res.send({ message: "Task updated successfully", modifiedCount: 1 });
+        } else {
+            
+             res.send({ message: "Task found, but no changes were made.", modifiedCount: 0 });
+        }
+        
+    } catch (error) {
+        console.error("Error updating task:", error);
+        
+        res.status(400).send({ message: "Invalid Task ID format or Server Error" }); 
+    }
+});
+
 
 
 
 app.delete('/task/:id', async (req, res) => {
     try {
         const id = req.params.id;
+       
         const query = { _id: new ObjectId(id) }; 
         const result = await tasksCollection.deleteOne(query);
         
         if (result.deletedCount === 1) {
+            
             res.send({ acknowledged: true, deletedCount: 1 });
         } else {
             res.status(404).send({ message: "Task not found" });
         }
     } catch (error) {
         console.error("Error deleting task:", error);
+       
         res.status(400).send({ message: "Invalid Task ID format" });
     }
 });
