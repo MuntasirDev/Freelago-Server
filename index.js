@@ -4,7 +4,6 @@ require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
 
-// লোকাল ডেভেলপমেন্টের জন্য পোর্ট ডিফাইন করা হলো
 const port = process.env.PORT || 3000; 
 
 app.use(cors());
@@ -16,21 +15,20 @@ const uri = `mongodb+srv://${process.env.FREELAGO_USER}:${process.env.FREELAGO_P
 const client = new MongoClient(uri, {
     serverApi: {
         version: ServerApiVersion.v1,
-        // Serverless Cold Start টাইম কমানোর জন্য 'strict: true' বাদ দেওয়া হয়েছে
+        
         deprecationErrors: true, 
     },
-    // Serverless-এর জন্য অপটিমাইজেশন: কানেকশন পুলিং নিশ্চিত করতে maxPoolSize
+    
     maxPoolSize: 1 
 });
 
 let tasksCollection; 
 
-// --- MongoDB Connection Logic for Serverless ---
 
 async function connectDB() {
-    // যদি tasksCollection ইতিমধ্যে ইনিশিয়ালাইজ করা থাকে, তবে নতুন করে কানেক্ট করার দরকার নেই (ক্যাশিং)
+    
     if (tasksCollection) {
-        // console.log("DB connection already established."); 
+       
         return;
     }
 
@@ -44,15 +42,13 @@ async function connectDB() {
         console.log("Pinged deployment. Successfully connected to MongoDB!");
 
     } catch (error) {
-        // কানেকশন ব্যর্থ হলে স্পষ্ট এরর থ্রো করা হলো
+       
         console.error("MongoDB connection failed:", error);
         throw new Error("Failed to connect to Database");
     }
 }
 
-// --- API Endpoints ---
 
-// POST: নতুন টাস্ক তৈরি করা
 app.post('/task', async (req, res) => {
     try {
         await connectDB(); 
@@ -68,7 +64,6 @@ app.post('/task', async (req, res) => {
 });
 
 
-// GET: সকল টাস্ক ফেচ করা
 app.get('/tasks', async (req, res) => {
     try {
         await connectDB(); 
@@ -85,7 +80,6 @@ app.get('/tasks', async (req, res) => {
 });
 
 
-// GET: আইডি দিয়ে সিঙ্গেল টাস্ক ফেচ করা
 app.get('/tasks/:id', async (req, res) => {
     try {
         await connectDB(); 
@@ -110,7 +104,6 @@ app.get('/tasks/:id', async (req, res) => {
 });
 
 
-// GET: ইউজার ইমেইল দিয়ে টাস্ক ফেচ করা
 app.get('/my-tasks/:email', async (req, res) => {
     try {
         await connectDB(); 
@@ -132,7 +125,6 @@ app.get('/my-tasks/:email', async (req, res) => {
 });
 
 
-// PUT: আইডি দিয়ে টাস্ক আপডেট করা
 app.put('/tasks/:id', async (req, res) => {
     try {
         await connectDB(); 
@@ -167,7 +159,6 @@ app.put('/tasks/:id', async (req, res) => {
 });
 
 
-// DELETE: আইডি দিয়ে টাস্ক মুছে ফেলা
 app.delete('/task/:id', async (req, res) => {
     try {
         await connectDB(); 
@@ -186,15 +177,11 @@ app.delete('/task/:id', async (req, res) => {
     }
 });
 
-
-// GET: বেস রুট / এর জন্য স্ট্যাটাস মেসেজ
 app.get('/', (req, res) => {
     res.send('Freelago server running and ready to handle requests.'); 
 });
 
 
-// --- Local Development Setup ---
-// এটি শুধুমাত্র লোকাল মেশিনে (development mode) অ্যাপটি চালু করবে
 if (process.env.NODE_ENV !== 'production') {
     app.listen(port, () => {
         console.log(`Server is running on port ${port} (http://localhost:${port})`);
@@ -202,5 +189,4 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 
-// Vercel-এর জন্য আবশ্যক: Express অ্যাপটি module হিসেবে এক্সপোর্ট করা হলো
 module.exports = app;
