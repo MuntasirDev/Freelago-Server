@@ -3,7 +3,9 @@ const cors = require('cors');
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
-const port = process.env.PORT || 3000;
+
+// যেহেতু Vercel এ এই port আর app.listen দরকার নেই, তাই এটি রিমুভ করা যেতে পারে, তবে ভেরিয়েবলটি থাকলে সমস্যা নেই
+// const port = process.env.PORT || 3000; 
 
 app.use(cors());
 app.use(express.json());
@@ -21,7 +23,14 @@ const client = new MongoClient(uri, {
 
 let tasksCollection; 
 
-async function run() {
+// Run() ফাংশনের পরিবর্তে, আমরা একটি connectDB ফাংশন তৈরি করি যা কানেকশন স্ট্যাটাস চেক করে
+async function connectDB() {
+    // যদি tasksCollection ইতিমধ্যে ইনিশিয়ালাইজ করা থাকে, তবে নতুন করে কানেক্ট করার দরকার নেই (কোল্ড স্টার্ট এড়ানোর জন্য)
+    if (tasksCollection) {
+        // console.log("DB connection already established."); 
+        return;
+    }
+
     try {
         await client.connect();
         
@@ -29,22 +38,25 @@ async function run() {
         tasksCollection = database.collection("tasks"); 
 
         await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        console.log("Pinged deployment. Successfully connected to MongoDB!");
 
     } catch (error) {
         console.error("MongoDB connection failed:", error);
+        throw new Error("Failed to connect to Database");
     }
 }
-run().catch(console.dir);
 
+// আগের run().catch(console.dir); লাইনটি বাদ দেওয়া হলো
 
 
 app.post('/task', async (req, res) => {
     try {
+        await connectDB(); // <-- কানেকশন নিশ্চিত করা
+        
         const newTask = req.body;
         
         newTask.createdAt = new Date().toISOString(); 
-       
+        
         newTask.bidsCount = 0; 
         
         const result = await tasksCollection.insertOne(newTask);
@@ -58,10 +70,11 @@ app.post('/task', async (req, res) => {
 
 app.get('/tasks', async (req, res) => {
     try {
+        await connectDB(); // <-- কানেকশন নিশ্চিত করা
         
         const tasks = await tasksCollection.find({}).sort({ createdAt: -1 }).toArray();
         
-       
+        
         const formattedTasks = tasks.map(task => ({
             ...task,
             id: task._id.toString(), 
@@ -77,6 +90,8 @@ app.get('/tasks', async (req, res) => {
 
 app.get('/tasks/:id', async (req, res) => {
     try {
+        await connectDB(); // <-- কানেকশন নিশ্চিত করা
+        
         const id = req.params.id; 
         const query = { _id: new ObjectId(id) }; 
         const task = await tasksCollection.findOne(query);
@@ -93,7 +108,7 @@ app.get('/tasks/:id', async (req, res) => {
             id: task._id.toString() 
         };
         
-       
+        
         res.send(formattedTask);
         
     } catch (error) {
@@ -104,10 +119,10 @@ app.get('/tasks/:id', async (req, res) => {
 });
 
 
-
-
 app.get('/my-tasks/:email', async (req, res) => {
     try {
+        await connectDB(); // <-- কানেকশন নিশ্চিত করা
+        
         const email = req.params.email;
         const query = { userEmail: email }; 
         const tasks = await tasksCollection.find(query).toArray();
@@ -128,6 +143,8 @@ app.get('/my-tasks/:email', async (req, res) => {
 
 app.put('/tasks/:id', async (req, res) => {
     try {
+        await connectDB(); // <-- কানেকশন নিশ্চিত করা
+        
         const id = req.params.id;
         const updatedTaskData = req.body;
 
@@ -147,7 +164,7 @@ app.put('/tasks/:id', async (req, res) => {
             },
         };
 
-       
+        
         const result = await tasksCollection.updateOne(query, updateDoc); 
 
         if (result.matchedCount === 0) {
@@ -169,12 +186,12 @@ app.put('/tasks/:id', async (req, res) => {
 });
 
 
-
-
 app.delete('/task/:id', async (req, res) => {
     try {
+        await connectDB(); // <-- কানেকশন নিশ্চিত করা
+        
         const id = req.params.id;
-       
+        
         const query = { _id: new ObjectId(id) }; 
         const result = await tasksCollection.deleteOne(query);
         
@@ -186,15 +203,17 @@ app.delete('/task/:id', async (req, res) => {
         }
     } catch (error) {
         console.error("Error deleting task:", error);
-       
+        
         res.status(400).send({ message: "Invalid Task ID format" });
     }
 });
 
 
 app.get('/', (req, res) => {
-    res.send('Freelago server running and connected to MongoDB.');
+    // এখানেও কানেকশন চেক করা ভালো, কিন্তু শুধুমাত্র status দেখানোর জন্য দরকার নেই
+    res.send('Freelago server running and ready to handle requests.'); 
 });
 
 
+// এই লাইনটি Vercel-এর জন্য আবশ্যক, যা আপনার Express অ্যাপটিকে Serverless Function-এ রূপান্তর করে।
 module.exports = app;
